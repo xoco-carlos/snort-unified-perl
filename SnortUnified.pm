@@ -122,7 +122,8 @@ sub License() { Version . "\nLicensed under the $LICENSE" };
                  get_snort_classifications
                  print_snort_classifications
                  get_priority
-                 $IP_PROTO_NAME
+                 $IP_PROTO_NAMES
+		 $IP_OPT_MAP
                  $TCP_OPT_MAP
                  $ICMP_TYPES
              );
