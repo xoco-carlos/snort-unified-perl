@@ -1,0 +1,8 @@
+make_bundle.sh
+exclude.txt
+snort.log.eth4.1156958442
+private
+dist/*
+*~
+.svn
+CVS
