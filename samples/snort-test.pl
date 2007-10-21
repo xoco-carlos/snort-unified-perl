@@ -1,12 +1,15 @@
 #!/usr/bin/perl -I..
 
-use SnortUnified(qw(:DEFAULT :record_vars :meta_handlers));
+use SnortUnified(qw(:ALL));
+use SnortUnified::MetaData(qw(:ALL));
+
+
+$debug = 1;
 
 my $sids = get_snort_sids("/usr/snort/rules/sid-msg.map","/usr/snort/rules/gen-msg.map");
 my $class = get_snort_classifications("/usr/snort/rules/classification.config");
 
 my $file = shift;
-my @fields;
 my $openfile;
 my $uf_file = undef;
 my $old_uf_file = undef;
@@ -27,19 +30,13 @@ while (1) {
     $openfile = openSnortUnified($uf_file) || die "cannot open $uf_file";
   }
 
-  if ($openfile->{'TYPE'} eq 'LOG' ) {
-    @fields = @$log_fields;
-  } else {
-    @fields = @$alert_fields;
-  }
-
   read_records();
 }
 
 sub read_records() {
   while ( $record = readSnortUnifiedRecord() ) {
     print($i++);;
-    foreach $field ( @fields ) {
+    foreach $field ( @{$record->{'FIELDS'}} ) {
         if ( $field ne 'pkt' ) {
             print("," . $record->{$field});
         }
@@ -47,7 +44,6 @@ sub read_records() {
     print("\n");
 
   }
-  print("Exited while. Deadreads is $UF->{'DEADREADS'}.\n") if $debug;
   return 0;
 }
 

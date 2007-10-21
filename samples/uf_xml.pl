@@ -1,6 +1,7 @@
 #!/usr/bin/perl -I..
 
-use SnortUnified(qw(:DEFAULT :record_vars :meta_handlers));
+use SnortUnified(qw(:ALL));
+use SnortUnified::MetaData(qw(:ALL));
 use XML::Writer;
 use Socket;
 
@@ -17,12 +18,6 @@ $class = get_snort_classifications("/Users/jbrvenik/src/test/unified/classificat
 $UF_Data = openSnortUnified($file);
 die unless $UF_Data;
 
-if ( $UF_Data->{'TYPE'} eq 'LOG' ) {
-    @fields = @$log_fields;
-} else {
-    @fields = @$alert_fields;
-}
-
 my $xml = new XML::Writer();
 
 $xml->xmlDecl();
@@ -36,7 +31,7 @@ while ( $record = readSnortUnifiedRecord() ) {
     $xml->characters($record->{'event_id'});
     print("\n");
 
-    foreach $field ( @fields ) {
+    foreach $field ( @{$record->{'FIELDS'}} ) {
       if ($field ne 'pkt') {
         print("\t\t");
         $xml->startTag($field);

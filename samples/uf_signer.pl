@@ -23,14 +23,8 @@ $signature = undef;
 $UF_Data = openSnortUnified($file);
 die unless $UF_Data;
 
-if ( $UF_Data->{'TYPE'} eq 'LOG' ) {
-    @fields = @$log_fields;
-} else {
-    @fields = @$alert_fields;
-}
-
 print("file,record");
-foreach $field ( @fields ) {
+foreach $field ( @{$record->{'FIELDS'}}) {
     if ( $field ne 'pkt' ) { 
         print("," . $field);
     } else {
@@ -44,7 +38,7 @@ while ( $record = readSnortUnifiedRecord() ) {
     
     print($file . "," . $i++);;
     
-    foreach $field ( @fields ) {
+    foreach $field ( @{$record->{'FIELDS'}} ) {
         if ( $field ne 'pkt' ) {
             print("," . $record->{$field});
         } else {
