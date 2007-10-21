@@ -1,6 +1,6 @@
 #!/usr/bin/perl -I..
 
-use SnortUnified(qw(:DEFAULT :record_vars));
+use SnortUnified(qw(:ALL));
 
 $file = shift;
 $debug = 0;
@@ -10,14 +10,8 @@ $record = {};
 $UF_Data = openSnortUnified($file);
 die unless $UF_Data;
 
-if ( $UF_Data->{'TYPE'} eq 'LOG' ) {
-    @fields = @$log_fields;
-} else {
-    @fields = @$alert_fields;
-}
-
 print("row");
-foreach $field ( @fields ) {
+foreach $field ( @{$record->{'FIELDS'}} ) {
     if ( $field ne 'pkt' ) { 
         print("," . $field);
     }
@@ -38,7 +32,7 @@ sub read_records() {
     
     print($i++);;
     
-    foreach $field ( @fields ) {
+    foreach $field ( @{$record->{'FIELDS'}} ) {
         if ( $field ne 'pkt' ) {
             print("," . $record->{$field});
         }

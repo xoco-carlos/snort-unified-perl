@@ -1,6 +1,8 @@
 #!/usr/bin/perl -I..
 
-use SnortUnified(qw(:DEFAULT :record_vars :meta_handlers));
+use SnortUnified(qw(:ALL));
+use SnortUnified::MetaData(qw(:ALL));
+use SnortUnified::TextOutput(qw(:ALL));
 use Sys::Syslog;
 
 $file = shift;
@@ -9,26 +11,25 @@ $UF_Data = {};
 $record = {};
 $prepend = "Snort Alert:";
 
-$sids = get_snort_sids("/Users/jbrvenik/src/test/unified/sid-msg.map",
-                       "/Users/jbrvenik/src/test/unified/gen-msg.map");
-$class = get_snort_classifications("/Users/jbrvenik/src/test/unified/classification.config");
+$sids = get_snort_sids("/Users/jbrvenik/src/test/sid-msg.map",
+                       "/Users/jbrvenik/src/test/gen-msg.map");
+$class = get_snort_classifications("/Users/jbrvenik/src/test/classification.config");
 
 $UF_Data = openSnortUnified($file);
 die unless $UF_Data;
 
 if ( $UF_Data->{'TYPE'} eq 'LOG' ) {
-    @fields = @$log_fields;
-} else {
-    @fields = @$alert_fields;
+    closeSnortUnified();
+    die("$0 does not handle unified log files");
 }
 
 
-openlog($prepend, 'cons,pid', 'local0');
+openlog($prepend, 'cons,pid', 'local1');
 syslog('info', "$0: Processing file $file");
 
 while ( $record = readSnortUnifiedRecord() ) {
     
-    syslog('info', format_alert($record, $sids, $class));
+    syslog('alert', format_alert($record, $sids, $class));
     
 }
 
