@@ -62,6 +62,7 @@ use NetPacket::IP qw(:ALL);
 use NetPacket::TCP qw(:ALL);
 use NetPacket::UDP qw(:ALL);
 use NetPacket::ICMP qw(:ALL);
+use SnortUnified::Handlers qw(:ALL);
 
 my $class_self;
 
@@ -452,6 +453,8 @@ sub insertSnortAlert($$$) {
     
     check_handles();
 
+    exec_handler('pre_event_insert', $record);
+
     $sigid = getSigID($record, $sids, $class);
     $classid = getClassID($record, $class);
     
@@ -477,6 +480,8 @@ sub insertSnortAlert($$$) {
     
     # Increment the event ID
     $DB_INFO->{'event_id'}++;
+
+    exec_handler('post_event_insert', $record);
 }
 
 sub insertSnortLog($$$) {
@@ -498,6 +503,8 @@ sub insertSnortLog($$$) {
 
 
     check_handles();
+
+    exec_handler('pre_log_insert', $record);
 
     $sigid = getSigID($record, $sids, $class) || 0;
     $classid = getClassID($record, $class) || 0;
@@ -580,5 +587,8 @@ sub insertSnortLog($$$) {
     }
 
     $DB_INFO->{'event_id'}++;
+    
+    exec_handler('post_log_insert', $record);
+
 }
 1

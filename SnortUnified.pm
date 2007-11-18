@@ -55,6 +55,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 use Carp  qw(cluck);
 use Socket;
 use Fcntl qw(:flock);
+use SnortUnified::Handlers qw(:ALL);
 use NetPacket::Ethernet;
 use NetPacket::IP qw(:ALL);
 use NetPacket::TCP qw(:ALL);
@@ -107,10 +108,6 @@ sub License() { Version . "\nLicensed under the $LICENSE" };
                  $UNIFIED_ALERT
                  $UNIFIED2
                  $UNIFIED2_TYPES
-                 register_handler
-                 unregister_handler
-                 exec_handler
-                 show_handlers
              );
 
 %EXPORT_TAGS = (
@@ -358,57 +355,7 @@ my $log64_fields = [
         'pkt',
 ];
 
-my $HANDLERS = {};
-
 our $log_fields = $log32_fields;
-
-
-###############################################################
-# Register handlers
-###############################################################
-sub register_handler($$) {
-    my $hdlr = shift;
-    my $sub = shift;
-    chomp $hdlr;
-    debug("Registering a handler for " . $hdlr);
-    $HANDLERS->{$hdlr} = $sub;
-}
-
-###############################################################
-# UN Register handlers
-###############################################################
-sub unregister_handler($) {
-    my $hdlr = shift;
-    chomp $hdlr;
-    debug("UN Registering a handler for " . $hdlr);
-    $HANDLERS->{$hdlr} = undef;
-}
-
-###############################################################
-# Show handlers
-###############################################################
-sub show_handlers() {
-    foreach my $hdlr (keys %{$HANDLERS}) {
-        print("Handler " . $hdlr . " is " . $HANDLERS->{$hdlr} . "\n");
-    }
-}
-
-###############################################################
-# Run handlers
-###############################################################
-sub exec_handler($$) {
-    my $hdlr = shift;
-    my $data = shift;
-    chomp $hdlr;
-    debug("Checking handler " . $hdlr);
-    if ( defined $HANDLERS->{$hdlr} ) {
-        debug("Executing handler " . $HANDLERS->{$hdlr});
-        eval { $HANDLERS->{$hdlr}($data); }
-    } else {
-        debug("No registered handler for " . $hdlr);
-    }
-}
-
 
 ###############################################################
 # Close the unified file

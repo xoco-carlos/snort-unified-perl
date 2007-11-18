@@ -1,6 +1,7 @@
 #!/usr/bin/perl -I..
 
 use SnortUnified(qw(:ALL));
+use SnortUnified::Handlers(qw(:ALL));
 
 $file = shift;
 $debug = 0;
