@@ -31,8 +31,9 @@
 #
 #########################################################################################
 
-use SnortUnified qw(:DEFAULT :meta_handlers);
+use SnortUnified qw(:ALL);
 use SnortUnified::Database qw(:ALL);
+use SnortUnified::MetaData(qw(:ALL));
 use Sys::Hostname;
 
 print License . "\n";

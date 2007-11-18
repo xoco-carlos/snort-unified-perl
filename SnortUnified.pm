@@ -106,6 +106,11 @@ sub License() { Version . "\nLicensed under the $LICENSE" };
                  $UNIFIED_LOG
                  $UNIFIED_ALERT
                  $UNIFIED2
+                 $UNIFIED2_TYPES
+                 register_handler
+                 unregister_handler
+                 exec_handler
+                 show_handlers
              );
 
 %EXPORT_TAGS = (
@@ -138,6 +143,7 @@ sub License() { Version . "\nLicensed under the $LICENSE" };
                                     $UNIFIED2_PERFORMANCE
                                     $UNIFIED2_PORTSCAN
                                     $UNIFIED2_IDS_EVENT_IPV6
+                                    $UNIFIED2_TYPES
                                   )
                                 ],
                unified_types => [qw(
@@ -171,6 +177,16 @@ our $UNIFIED2_EVENT_EXTENDED = 66;
 our $UNIFIED2_PERFORMANCE    = 67;
 our $UNIFIED2_PORTSCAN       = 68;
 our $UNIFIED2_IDS_EVENT_IPV6 = 72;
+
+our $UNIFIED2_TYPES = {
+        $UNIFIED2_EVENT             => 'EVENT',
+        $UNIFIED2_PACKET            => 'PACKET',
+        $UNIFIED2_IDS_EVENT         => 'IPS4 EVENT',
+        $UNIFIED2_EVENT_EXTENDED    => 'EXTENDED',
+        $UNIFIED2_PERFORMANCE       => 'PERFORMANCE',
+        $UNIFIED2_PORTSCAN          => 'PORTSCAN',
+        $UNIFIED2_IDS_EVENT_IPV6    => 'IPS6 EVENT',
+};
 
 our $U2_PACKET_FLAG          = 1;
 our $U2_FLAG_BLOCKED         = 0x20;
@@ -342,7 +358,57 @@ my $log64_fields = [
         'pkt',
 ];
 
+my $HANDLERS = {};
+
 our $log_fields = $log32_fields;
+
+
+###############################################################
+# Register handlers
+###############################################################
+sub register_handler($$) {
+    my $hdlr = shift;
+    my $sub = shift;
+    chomp $hdlr;
+    debug("Registering a handler for " . $hdlr);
+    $HANDLERS->{$hdlr} = $sub;
+}
+
+###############################################################
+# UN Register handlers
+###############################################################
+sub unregister_handler($) {
+    my $hdlr = shift;
+    chomp $hdlr;
+    debug("UN Registering a handler for " . $hdlr);
+    $HANDLERS->{$hdlr} = undef;
+}
+
+###############################################################
+# Show handlers
+###############################################################
+sub show_handlers() {
+    foreach my $hdlr (keys %{$HANDLERS}) {
+        print("Handler " . $hdlr . " is " . $HANDLERS->{$hdlr} . "\n");
+    }
+}
+
+###############################################################
+# Run handlers
+###############################################################
+sub exec_handler($$) {
+    my $hdlr = shift;
+    my $data = shift;
+    chomp $hdlr;
+    debug("Checking handler " . $hdlr);
+    if ( defined $HANDLERS->{$hdlr} ) {
+        debug("Executing handler " . $HANDLERS->{$hdlr});
+        eval { $HANDLERS->{$hdlr}($data); }
+    } else {
+        debug("No registered handler for " . $hdlr);
+    }
+}
+
 
 ###############################################################
 # Close the unified file
@@ -477,6 +543,9 @@ sub openSnortUnified($) {
        # die("XXX - Finish unified2 handling");
      }
   }
+  
+  exec_handler("unified_opened", $UF);
+
   readSnortUnifiedHeader($UF);
 
   return $UF;
@@ -549,6 +618,7 @@ sub readSnortUnified2Record() {
                 $UF_Record->{'pkt'} = substr($buffer, $UF_Record->{'pkt_len'} * -1, $UF_Record->{'pkt_len'});
             }
         }
+        exec_handler("unified2_packet", $UF_Record);
 
     } elsif ($UF_Record->{'TYPE'} eq $UNIFIED2_IDS_EVENT) {
         debug("Handling an IDS event from the unified2 file");
@@ -559,11 +629,15 @@ sub readSnortUnified2Record() {
             $UF_Record->{$fld} = @record[$i++];
             debug("Field " . $fld . " is set to " . $UF_Record->{$fld});
         }
+        exec_handler("unified2_event", $UF_Record);
     } else {
         debug("Handling of type " . $UF_Record->{'TYPE'} . " not implemented yet");
+        exec_handler("unified2_unhandled", $UF_Record);
         return undef;
     }
         
+    exec_handler("unified2_record", $UF_Record);
+
     return $UF_Record;
 }
 
@@ -656,6 +730,8 @@ sub old_readSnortUnifiedRecord() {
         }
     }
 
+    exec_handler("unified_record", $UF_Record);
+
     return $UF_Record;
 }
 
@@ -712,6 +788,9 @@ sub readData() {
     $UF->{'FILEMTIME'} = $mtime;
     #Expose the raw data
     $UF_Record->{'raw_record'} = $buffer;
+
+    exec_handler("read_data", ($readsize, $buffer));
+
     return ($readsize, $buffer);
 }
 
@@ -758,6 +837,9 @@ sub readSnortUnifiedHeader($) {
         debug("Fallthrough in readSnortUNifiedHeader");
     }
     $UF->{'FILEPOS'} = $header;
+    
+    exec_handler("read_header", $h);
+
 }
 
 ###############################################################
