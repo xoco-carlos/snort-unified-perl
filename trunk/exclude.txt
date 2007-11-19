@@ -6,3 +6,6 @@ dist/*
 *~
 .svn
 CVS
+samples/snort-unified2.log
+samples/snort-unified.alert
+samples/snort-unified.log
