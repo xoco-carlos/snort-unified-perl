@@ -503,7 +503,8 @@ sub openSnortUnified($) {
 # Read a record from the unified2 file and return it
 # undef if we read 0 from file and cluck and return undef
 # if we are not working with a unified2 file
-# return @array,$HASH
+# return -1 if we have failed to pass registered qualifiers
+# otherwise return $HASH containing the record
 ###############################################################
 sub readSnortUnified2Record() {
     my @record = undef;
@@ -528,7 +529,6 @@ sub readSnortUnified2Record() {
     $UF->{'FILEMTIME'} = (stat(UFD))[9];
 
     # read in the header (type,length)
-    # Cannot pass around bare word filehandles with strict subs? Need to look into why that is.
     ($size, $buffer) = readData(8, 3);
     if ( $size <= 0 ) { 
         return undef;
@@ -548,8 +548,6 @@ sub readSnortUnified2Record() {
     debug("Handling type " . $UF_Record->{'TYPE'});
 
     if ( $UF_Record->{'TYPE'} eq $UNIFIED2_PACKET ) {
-        # debug("Handling of packets not implemented yet : type " . $UF_Record->{'TYPE'});
-        # return undef;
         debug("Handling a packet record from the unified2 file");
         $UF_Record->{'FIELDS'} = $log2_fields;
         debug("Unpacking with mask " , $unified2_type_masks->{$UNIFIED2_PACKET});
@@ -559,9 +557,7 @@ sub readSnortUnified2Record() {
                 $UF_Record->{$fld} = @record[$i++];
                 debug("Field " . $fld . " is set to " . $UF_Record->{$fld});
             } else {
-                # pkt_len had better be defined by now or the whole record is screwed up
                 debug("Filling in pkt with " . $UF_Record->{'pkt_len'} . " bytes");
-                # fill in packet from end of buffer back pkt_len for pkt_len
                 $UF_Record->{'pkt'} = substr($buffer, $UF_Record->{'pkt_len'} * -1, $UF_Record->{'pkt_len'});
             }
         }
@@ -585,29 +581,41 @@ sub readSnortUnified2Record() {
         
     exec_handler("unified2_record", $UF_Record);
 
-    return $UF_Record;
+    if ( exec_qualifier($UF_Record->{'TYPE'},$UF_Record->{'sig_gen'},$UF_Record->{'sig_id'}, $UF_Record) ) {
+        return $UF_Record;
+    }
+    
+    # presume something is not right
+    return -1;
 }
 
 ###############################################################
-# Read a record from the unified file and return it
-# undef if we read 0 from file
-# return @array,$HASH
-###############################################################
-# I had presumed that if I could get an exclusive lock then
-# There was nothing that had it open in write mode. Unfortunately
-# it seems that this is not the case... 
+# A stub to call the right readrecord func
 ###############################################################
 sub readSnortUnifiedRecord() {
+    my $rec = undef;
+
     if ( $UF->{'TYPE'} eq $UNIFIED_ALERT || $UF->{'TYPE'} eq $UNIFIED_LOG ) {
-        return old_readSnortUnifiedRecord();
+        $rec = old_readSnortUnifiedRecord();
+        while ( $rec == -1 ) {
+            $rec = old_readSnortUnifiedRecord();
+        }
     } elsif ( $UF->{'TYPE'} eq $UNIFIED2 ) {
-        return readSnortUnified2Record();
+        $rec = readSnortUnified2Record();
+        while ( $rec == -1 ) {
+            $rec = readSnortUnified2Record();
+        }
     } else {
         cluck("readSnortUnifiedRecord does not handle " . $UF->{'TYPE'} . " files");
         return undef;
     }
+
+    return $rec;
 }
 
+###############################################################
+# Read old unified record formats
+###############################################################
 sub old_readSnortUnifiedRecord() {
 
     if ( $UF->{'TYPE'} ne $UNIFIED_ALERT && $UF->{'TYPE'} ne $UNIFIED_LOG ) {
@@ -630,7 +638,6 @@ sub old_readSnortUnifiedRecord() {
     $UF->{'FILESIZE'} = (stat(UFD))[7];
     $UF->{'FILEMTIME'} = (stat(UFD))[9];
 
-    # this should handle partials and active files
     ($readsize,$buffer) = readData($UF->{'RECORDSIZE'}, 3);
 
     if ( $readsize <= 0) {
@@ -663,8 +670,6 @@ sub old_readSnortUnifiedRecord() {
                 return undef;
             }
             debug(sprintf("FETCHING PACKET OF SIZE %d IN readSnortUnifiedRecord\n", $UF_Record->{'caplen'}));
-            # caplen should have been defined by now
-            # if not then things are really fsckd up
             ( $pktsize, $UF_Record->{$field}) = readData($UF_Record->{'caplen'}, 3);
         
             if ( $pktsize != $UF_Record->{'caplen'} ) {
@@ -679,7 +684,13 @@ sub old_readSnortUnifiedRecord() {
 
     exec_handler("unified_record", $UF_Record);
 
-    return $UF_Record;
+    if ( exec_qualifier(0,$UF_Record->{'sig_gen'},$UF_Record->{'sig_id'}, $UF_Record) ) {
+        return $UF_Record;
+    }
+
+    # presume something is not right
+    return -1;
+
 }
 
 
