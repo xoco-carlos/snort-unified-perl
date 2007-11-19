@@ -19,8 +19,11 @@ $record = {};
 # ("read_data", ($readsize, $buffer));
 # ("read_header", $h);
 
+register_handler('unified2_packet', \&make_hex_pkt);
+
 register_handler('unified2_record', \&printrec);
 register_handler('unified_record', \&printrec);
+
 show_handlers();
 
 # Qualifiers will be run, if any return a value < 1 
@@ -59,28 +62,24 @@ sub printrec() {
 
   # print $UNIFIED2_TYPES->{$rec->{'TYPE'}};
   foreach $field ( @{$rec->{'FIELDS'}} ) {
-    if ( $field ne 'pkt' ) {
+    # if ( $field ne 'pkt' ) {
       print($rec->{$field} . ",");
-    }
+    # }
   }
   print($i++ . "\n");
 
 }
 
+sub make_hex_pkt () {
+    my $rec = shift;
+    my $pkt = $rec->{'pkt'};
+    $rec->{'pkt'} = unpack("h* ",$pkt);
+}
+
 sub make_noise() {
   $rec = shift;
 
-  print("#" x 70 . "\n");
   print("#" x 20 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 70 . "\n");
 
   return 1;
 }
@@ -88,17 +87,7 @@ sub make_noise() {
 sub make_noise_fail() {
   $rec = shift;
 
-  print("#" x 20 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 20 . "\n");
+  print("#" x 40 . "\n");
 
   return 0;
 }
@@ -106,17 +95,7 @@ sub make_noise_fail() {
 sub make_noise_never() {
   $rec = shift;
 
-  print("#" x 20 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 20 . "\n");
-  print("#" x 70 . "\n");
-  print("#" x 20 . "\n");
+  print("#" x 60 . "\n");
 
   return 1;
 }
