@@ -29,8 +29,8 @@ register_handler('unified_record', \&make_ascii_pkt);
 # register_handler('unified_record', \&make_noise_fail);
 # register_handler('unified_record', \&make_noise);
 
-# register_handler('unified2_record', \&printrec);
-# register_handler('unified_record', \&printrec);
+register_handler('unified2_record', \&printrec);
+register_handler('unified_record', \&printrec);
 
 # show_handlers();
 
@@ -40,10 +40,10 @@ register_handler('unified_record', \&make_ascii_pkt);
 # Only one option for unified types
 
 # Skip all but sid 402
-register_qualifier(0,0,0, sub{return 0;});
+# register_qualifier(0,0,0, sub{return 0;});
 # By having something specific for 402
 # register_qualifier(0,1,402, \&printrec);
-register_qualifier(0,1,402, sub{return 1;});
+# register_qualifier(0,1,402, sub{return 1;});
 # register_qualifier(0,1,402, \&make_noise);
 # register_qualifier(0,1,402, \&make_noise);
 # register_qualifier(0,1,402, \&make_noise_fail);
@@ -56,7 +56,7 @@ register_qualifier(0,1,402, sub{return 1;});
 
 # register_pcre(1,402, "test");
 # register_pcre(1,402, "*");
-register_pcre(1,402, ".*ads.clickagents.com.*");
+# register_pcre(1,402, ".*ads.clickagents.com.*");
 
 # show_qualifiers();
 
@@ -72,7 +72,9 @@ exit 0;
 #############################################
 
 sub read_records() {
-  while ( $record = readSnortUnifiedRecord() ) {printrec($record);}
+  # while ( $record = readSnortUnifiedRecord() ) {printrec($record);}
+  # XXX - Note how there is no body in this code to print anything
+  while ( $record = readSnortUnifiedRecord() ) {}
 
   print("Exited while. Deadreads is $UF->{'DEADREADS'}.\n") if $debug;
   
