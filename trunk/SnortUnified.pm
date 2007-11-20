@@ -205,6 +205,7 @@ our $UF = {
         'FILEMTIME' => 0,
         'FILEPOS' => 0,
         'PATIENCE' => 1,
+        'TOLERANCE' => 3,
         'LOCKED' => 0,
         '64BIT' => 0,
 };
@@ -529,7 +530,7 @@ sub readSnortUnified2Record() {
     $UF->{'FILEMTIME'} = (stat(UFD))[9];
 
     # read in the header (type,length)
-    ($size, $buffer) = readData(8, 3);
+    ($size, $buffer) = readData(8, $UF->{'TOLERANCE'});
     if ( $size <= 0 ) { 
         return undef;
     }
@@ -538,7 +539,7 @@ sub readSnortUnified2Record() {
 
     debug("Header type is " . $UF_Record->{'TYPE'} . " with size of " . $UF_Record->{'SIZE'});
 
-    ($size, $buffer) = readData($UF_Record->{'SIZE'}, 3);
+    ($size, $buffer) = readData($UF_Record->{'SIZE'}, $UF->{'TOLERANCE'});
 
     if ($size <= 0) {
         return undef;
@@ -638,7 +639,7 @@ sub old_readSnortUnifiedRecord() {
     $UF->{'FILESIZE'} = (stat(UFD))[7];
     $UF->{'FILEMTIME'} = (stat(UFD))[9];
 
-    ($readsize,$buffer) = readData($UF->{'RECORDSIZE'}, 3);
+    ($readsize,$buffer) = readData($UF->{'RECORDSIZE'}, $UF->{'TOLERANCE'});
 
     if ( $readsize <= 0) {
         return undef;
@@ -670,7 +671,7 @@ sub old_readSnortUnifiedRecord() {
                 return undef;
             }
             debug(sprintf("FETCHING PACKET OF SIZE %d IN readSnortUnifiedRecord\n", $UF_Record->{'caplen'}));
-            ( $pktsize, $UF_Record->{$field}) = readData($UF_Record->{'caplen'}, 3);
+            ( $pktsize, $UF_Record->{$field}) = readData($UF_Record->{'caplen'}, $UF->{'TOLERANCE'});
         
             if ( $pktsize != $UF_Record->{'caplen'} ) {
                 return undef;
@@ -730,7 +731,7 @@ sub readData() {
              ( $fsize eq $UF->{'FILESIZE'} ) &&
              ( $fsize eq $UF->{'FILEPOS'} )) {
             $deads++;
-            if ( $deads % $tolerance == 0 ) {
+            if ( $tolerance == 0 || $deads % $tolerance == 0 ) {
                 debug("Bailing on deads of $deads in readData");
                 debug("Seeking to $UF->{'FILEPOS'}");
                 seek(UFD, $UF->{'FILEPOS'}, 0);
