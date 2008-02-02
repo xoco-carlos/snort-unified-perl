@@ -182,14 +182,15 @@ sub getSnortDBHandle() {
 
     $DBH = DBI->connect($DB_INFO->{'connstr'}, $DB_INFO->{'user'}, $DB_INFO->{'password'}); 
     
-    ($schema) = $DBH->selectrow_array("SELECT max(vseq) from schema");
+    # XXX - Need to fix for 5.0
+    # ($schema) = $DBH->selectrow_array("SELECT max(vseq) from schema");
     
-    if ( $schema lt $REQUIRED_SCHEMA ) { 
-        print("Schema Version " . $schema . " too old\n"); 
-        return 0;
-    } else {
+    # if ( $schema lt $REQUIRED_SCHEMA ) { 
+    #     print("Schema Version " . $schema . " too old\n"); 
+    #     return 0;
+    # } else {
         return 1;
-    }
+    # }
 }
 
 sub closeSnortDBHandle() {

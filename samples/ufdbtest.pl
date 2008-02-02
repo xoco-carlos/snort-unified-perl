@@ -32,6 +32,7 @@
 
 use SnortUnified(qw(:ALL));
 use SnortUnified::MetaData(qw(:ALL));
+use SnortUnified::TextOutput(qw(:ALL));
 use SnortUnified::Database(qw(:ALL));
 use Sys::Hostname;
 
