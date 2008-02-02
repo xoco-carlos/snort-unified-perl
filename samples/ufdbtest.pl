@@ -73,10 +73,10 @@ printSnortSigIdMap();
 while ( $record = readSnortUnifiedRecord() ) {
     
     if ( $UF_Data->{'TYPE'} eq 'LOG' ) {
-        print_log($record,$sids,$class);
+        # print_log($record,$sids,$class);
         insertSnortLog($record,$sids,$class);
     } else {
-        print_alert($record,$sids,$class);
+        # print_alert($record,$sids,$class);
         insertSnortAlert($record,$sids,$class);
     }
 
