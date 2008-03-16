@@ -1,8 +1,8 @@
-
 = Introduction =
 
 SnortUnified.pm is a perl module to work with Snort unified files, both unified and unified2. It is really easy to work with and in the most basic form can handle a unified file with a few lines of perl.
 
+{{{
 use SnortUnified(qw(:ALL));
 use Data::Dumper;
 
@@ -11,6 +11,7 @@ while ( $record = readSnortUnifiedRecord() ) {
    print Dumper($record);
 }
 closeSnortUnified();
+}}}
 
 Much more can also be done, check out the samples in the src distro or in the svn browser.
 
