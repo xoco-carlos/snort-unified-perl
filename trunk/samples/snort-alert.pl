@@ -4,7 +4,6 @@ use SnortUnified(qw(:ALL));
 use SnortUnified::MetaData(qw(:ALL));
 use SnortUnified::TextOutput(qw(:ALL));
 
-
 $debug = 0;
 
 my $sids = get_snort_sids("/Download/Snort/snort-2.8.3.1/etc/sid-msg.map","/Download/Snort/snort-2.8.3.1/etc/gen-msg.map");
@@ -36,14 +35,24 @@ while (1) {
 
 sub read_records() {
   while ( $record = readSnortUnifiedRecord() ) {
-    print($i++);;
-        if ( $UF_Data->{'TYPE'} eq 'LOG' ) {
+
+    if ( $openfile->{'TYPE'} eq 'LOG' ) {
+        print_log($record, $sids, $class);
+    } elsif ($openfile->{'TYPE'} eq 'ALERT' ) {
+        print_alert($record, $sids, $class);
+    } elsif ($openfile->{'TYPE'} eq 'UNIFIED2' ) {
+        if ( $record->{'TYPE'} eq $UNIFIED2_PACKET ) {
             print_log($record, $sids, $class);
-        } else {
+        } elsif ( $record->{'TYPE'} eq $UNIFIED2_IDS_EVENT ) {
             print_alert($record, $sids, $class);
+        } else {
+            # not handled
         }
+    } else {
+       # Not handles
     }
     print("\n");
+  }
   return 0;
 }
 
