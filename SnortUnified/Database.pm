@@ -57,6 +57,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
 use DBI;
 use POSIX qw(strftime); 
+use Socket;
 use NetPacket::Ethernet qw(:ALL);
 use NetPacket::IP qw(:ALL);
 use NetPacket::TCP qw(:ALL);
@@ -184,13 +185,14 @@ sub getSnortDBHandle() {
     
     # XXX - Need to fix for 5.0
     # ($schema) = $DBH->selectrow_array("SELECT max(vseq) from schema");
+    ($schema) = $DBH->selectrow_array("SELECT max(vseq) from `schema`");
     
-    # if ( $schema lt $REQUIRED_SCHEMA ) { 
-    #     print("Schema Version " . $schema . " too old\n"); 
-    #     return 0;
-    # } else {
+    if ( $schema lt $REQUIRED_SCHEMA ) { 
+        print("Schema Version " . $schema . " too old\n"); 
+        return 0;
+    } else {
         return 1;
-    # }
+    }
 }
 
 sub closeSnortDBHandle() {
