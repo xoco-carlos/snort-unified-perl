@@ -56,11 +56,13 @@ use Carp  qw(cluck);
 use Socket;
 use Fcntl qw(:flock);
 use SnortUnified::Handlers qw(:ALL);
-use NetPacket::Ethernet;
-use NetPacket::IP qw(:ALL);
-use NetPacket::TCP qw(:ALL);
-use NetPacket::UDP qw(:ALL);
-use NetPacket::ICMP qw(:ALL);
+
+# XXX - JRB - Move all of this functionality to Net::Packet, it is maintained
+# use NetPacket::Ethernet;
+# use NetPacket::IP qw(:ALL);
+# use NetPacket::TCP qw(:ALL);
+# use NetPacket::UDP qw(:ALL);
+# use NetPacket::ICMP qw(:ALL);
 
 my $class_self;
 
@@ -89,6 +91,7 @@ sub License() { Version . "\nLicensed under the $LICENSE" };
                  $log_fields
                  $alert2_fields
                  $log2_fields
+                 $extra_data_fields
                  $flock_mode
                  $LOGMAGIC
                  $ALERTMAGIC
@@ -108,6 +111,7 @@ sub License() { Version . "\nLicensed under the $LICENSE" };
                  $UNIFIED_ALERT
                  $UNIFIED2
                  $UNIFIED2_TYPES
+                 $UNIFIED2_EXTRA_DATA
              );
 
 %EXPORT_TAGS = (
@@ -141,6 +145,7 @@ sub License() { Version . "\nLicensed under the $LICENSE" };
                                     $UNIFIED2_PORTSCAN
                                     $UNIFIED2_IDS_EVENT_IPV6
                                     $UNIFIED2_TYPES
+                                    $UNIFIED2_EXTRA_DATA
                                   )
                                 ],
                unified_types => [qw(
@@ -224,7 +229,18 @@ my $unified2_type_masks = {
         # Support 104 and 105 - sfutil/Unified2_common.h
         $UNIFIED2_IDS_EVENT_VLAN       => 'N11n2c4Nn2',
         $UNIFIED2_IDS_EVENT_IPV6_VLAN  => 'N9N4N4n2c4Nn2',
-        $UNIFIED2_EXTRA_DATA           => '',
+        # "sfutil/Unified2_common.h" line 142
+        # This is a variable length record, like a packet record
+        # Last field is the length of the record inclusive of header
+        # Within the header is a type dsignation that needs handling
+        # "sfutil/Unified2_common.h" line 145
+        #     EVENT_INFO_XFF_IPV4 = 1,
+        #     EVENT_INFO_XFF_IPV6 ,
+        #     EVENT_INFO_REVIEWED_BY,
+        #     EVENT_INFO_GZIP_DATA
+        # /* Length of the data + sizeof(blob_length) + sizeof(data_type)*/
+        # ... blah blah blah you end up with N9 after it all stacks up
+        $UNIFIED2_EXTRA_DATA           => 'N9',
 
 };
 
@@ -439,7 +455,21 @@ my $vlan_alert_fields64 = [
 ];
 
 # XXX - Type 110 needs to be here
+# data_blob could contain any of the types, implementing generic handling for now
 
+my $unified2_extra_data_fields = [
+    'event_type',
+    'event_length',
+    'sensor_id',
+    'event_id',
+    'tv_sec',
+    'type',
+    'datatype',
+    'bloblength',
+    'data_blob'
+];
+
+our $extra_data_fields = $unified2_extra_data_fields;
 
 ###############################################################
 # Close the unified file
@@ -709,7 +739,27 @@ sub readSnortUnified2Record() {
             debug("Field " . $fld . " is set to " . $UF_Record->{$fld});
         }
         exec_handler("unified2_event", $UF_Record);
-
+    } elsif ( $UF_Record->{'TYPE'} eq $UNIFIED2_EXTRA_DATA ) {
+# variable length like a packet
+# and.... let me say again, this needs reworking for maintainbility, readibility, blah blah
+# there are much better ways to do this whole section
+#                debug("Filling in pkt with " . $UF_Record->{'pkt_len'} . " bytes");
+#                $UF_Record->{'pkt'} = substr($buffer, $UF_Record->{'pkt_len'} * -1, $UF_Record->{'pkt_len'});
+       debug("Handling a type $UNIFIED2_EXTRA_DATA (EXTRA DATA) record from the unified2 file");
+       $UF_Record->{'FIELDS'} = $extra_data_fields;
+       debug("Unpacking with mask " , $unified2_type_masks->{$UNIFIED2_EXTRA_DATA});
+       @record = unpack($unified2_type_masks->{$UNIFIED2_EXTRA_DATA}, $buffer);
+       foreach my $fld (@{$UF_Record->{'FIELDS'}}) {
+           if ($fld ne 'data_blob') {
+               $UF_Record->{$fld} = @record[$i++];
+               debug("Field " . $fld . " is set to " . $UF_Record->{$fld});
+           } else {
+               debug("Filling in data_blob with " . $UF_Record->{'bloblength'} . " byes");
+               # XXX - JRB - I'm stealing this from the packet code above but WTH is it * -1?
+               # Something tells me it should be -1 not * -1 too bad I didn't comment it
+               $UF_Record->{$fld} = substr($buffer, $UF_Record->{'bloblength'} * -1, $UF_Record->{'bloblength'});
+           }
+       }
     } else {
         debug("Handling of type " . $UF_Record->{'TYPE'} . " not implemented yet");
         exec_handler("unified2_unhandled", $UF_Record);
