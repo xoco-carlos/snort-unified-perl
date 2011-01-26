@@ -203,28 +203,12 @@ our $UNIFIED2_TYPES = {
 
 my $unified2_type_masks = {
         $UNIFIED2_EVENT          => 'N11n2c2',
-        # XXX - Need to verify this struct
-        # $UNIFIED2_PACKET         => 'N7c*',
         $UNIFIED2_PACKET         => 'N7',
-        # XXX - Need to verify this struct
         $UNIFIED2_IDS_EVENT      => 'N11n2c2',
-        # XXX - Need to track down these structs
         $UNIFIED2_EVENT_EXTENDED => '',
         $UNIFIED2_PERFORMANCE    => '',
         $UNIFIED2_PORTSCAN       => '',
-        # XXX - Need to track down real size of in6_addr ( using N3N3 right now )
         # Patch from Martin Schütte - info...at...mschuette.name
-        # Hello,
-        # thanks for your module SnortUnified.pm. I made minor changes to support
-        # IPv6 events. Maybe you find the appended patch and sample log useful.
-        # 
-        # Two notes: The IPs are formatted and returned as strings; and
-        # I'm no expert with Perl's pack() so there might be more elegant
-        # solutions to get the data.
-
-        # Regards,
-        # Martin
-
         $UNIFIED2_IDS_EVENT_IPV6 => 'N9N4N4n2c2',
         # Support 104 and 105 - sfutil/Unified2_common.h
         $UNIFIED2_IDS_EVENT_VLAN       => 'N11n2c4Nn2',
@@ -454,8 +438,9 @@ my $vlan_alert_fields64 = [
     'pad2', # /*could be IPS Policy local id to support local sensor alerts*/
 ];
 
-# XXX - Type 110 needs to be here
 # data_blob could contain any of the types, implementing generic handling for now
+# you will need to register a handler for how _you_ want to handle the data 
+# I'm providing an example for XFF
 
 my $unified2_extra_data_fields = [
     'event_type',
@@ -466,7 +451,7 @@ my $unified2_extra_data_fields = [
     'type',
     'datatype',
     'bloblength',
-    'data_blob'
+    'data_blob',
 ];
 
 our $extra_data_fields = $unified2_extra_data_fields;
@@ -562,7 +547,6 @@ sub openSnortUnified($) {
        $UF->{'TYPE'} = $UNIFIED2;
        # The rest doesn't really matter because it changes from record to record
        debug("No match on magic, assuming unified2");
-       # die("XXX - Finish unified2 handling");
      }
   } else { # assume 32bit
      debug("Handling unified file with 32bit timevals");
@@ -601,7 +585,6 @@ sub openSnortUnified($) {
        $alert_fields = $unified2_ids_fields;
        # The rest doesn't really matter because it changes from record to record
        debug("No match on magic, assuming unified2");
-       # die("XXX - Finish unified2 handling");
      }
   }
   
@@ -739,27 +722,29 @@ sub readSnortUnified2Record() {
             debug("Field " . $fld . " is set to " . $UF_Record->{$fld});
         }
         exec_handler("unified2_event", $UF_Record);
-    } elsif ( $UF_Record->{'TYPE'} eq $UNIFIED2_EXTRA_DATA ) {
-# variable length like a packet
-# and.... let me say again, this needs reworking for maintainbility, readibility, blah blah
-# there are much better ways to do this whole section
-#                debug("Filling in pkt with " . $UF_Record->{'pkt_len'} . " bytes");
-#                $UF_Record->{'pkt'} = substr($buffer, $UF_Record->{'pkt_len'} * -1, $UF_Record->{'pkt_len'});
+    
+    } elsif ($UF_Record->{'TYPE'} eq $UNIFIED2_EXTRA_DATA) {
        debug("Handling a type $UNIFIED2_EXTRA_DATA (EXTRA DATA) record from the unified2 file");
        $UF_Record->{'FIELDS'} = $extra_data_fields;
        debug("Unpacking with mask " , $unified2_type_masks->{$UNIFIED2_EXTRA_DATA});
        @record = unpack($unified2_type_masks->{$UNIFIED2_EXTRA_DATA}, $buffer);
        foreach my $fld (@{$UF_Record->{'FIELDS'}}) {
            if ($fld ne 'data_blob') {
-               $UF_Record->{$fld} = @record[$i++];
-               debug("Field " . $fld . " is set to " . $UF_Record->{$fld});
+                $UF_Record->{$fld} = @record[$i++];
+                debug("Field " . $fld . " is set to " . $UF_Record->{$fld});
            } else {
                debug("Filling in data_blob with " . $UF_Record->{'bloblength'} . " byes");
                # XXX - JRB - I'm stealing this from the packet code above but WTH is it * -1?
                # Something tells me it should be -1 not * -1 too bad I didn't comment it
                $UF_Record->{$fld} = substr($buffer, $UF_Record->{'bloblength'} * -1, $UF_Record->{'bloblength'});
+               
+               # With XFF (type 1) you have two size fields and then the data. You have the size of the blob,
+               # the size of the data, and the data
+               # to handle it in your application you would do
+               # register_handler("unified2_extra_data", \&xff_handler)
            }
        }
+       exec_handler("unified2_extra_data", $UF_Record);
     } else {
         debug("Handling of type " . $UF_Record->{'TYPE'} . " not implemented yet");
         exec_handler("unified2_unhandled", $UF_Record);
